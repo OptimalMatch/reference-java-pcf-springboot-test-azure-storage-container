@@ -9,6 +9,7 @@ A Spring Boot service for testing Azure Blob Storage connectivity. Designed for 
 - VCAP_SERVICES integration for PCF
 - Local testing with Azurite emulator
 - Dynamic endpoint with credentials passed via HTTP headers
+- Web UI for interactive testing
 
 ## Prerequisites
 
@@ -29,6 +30,7 @@ A Spring Boot service for testing Azure Blob Storage connectivity. Designed for 
 | DELETE | `/api/blobs/{blobName}` | Delete a blob |
 | GET | `/api/blobs/{blobName}/exists` | Check if blob exists |
 | GET | `/actuator/health` | Health check endpoint |
+| GET | `/` | Web UI for interactive testing |
 
 ### Dynamic Endpoints (pass credentials via headers)
 
@@ -222,6 +224,33 @@ applications:
 | `AZURE_STORAGE_CONTAINER_NAME` | Blob container name | Yes |
 | `AZURE_STORAGE_BLOB_ENDPOINT` | Custom blob endpoint URL | Optional |
 | `AZURITE_BLOB_ENDPOINT` | Azurite endpoint override | Optional |
+| `APP_SECURITY_USERNAME` | Web UI username (default: admin) | Optional |
+| `APP_SECURITY_PASSWORD` | Web UI password (default: admin) | Optional |
+
+## Authentication
+
+The web UI and all API endpoints (except `/actuator/health`) are protected with HTTP Basic Authentication.
+
+- **Default username:** `admin`
+- **Default password:** `admin`
+
+Override via environment variables:
+```bash
+export APP_SECURITY_USERNAME=myuser
+export APP_SECURITY_PASSWORD=mysecretpassword
+```
+
+For PCF deployment, set in manifest.yml:
+```yaml
+env:
+  APP_SECURITY_USERNAME: myuser
+  APP_SECURITY_PASSWORD: mysecretpassword
+```
+
+Access with curl:
+```bash
+curl -u admin:admin http://localhost:8080/api/blobs/test
+```
 
 ### VCAP_SERVICES Format
 

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Blob Storage Tester</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #0078d4;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 2px rgba(0,120,212,0.2);
+        }
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background-color: #0078d4;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #006cbd;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .result.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .result.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group input {
+            width: auto;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #dee2e6;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Azure Blob Storage Tester</h1>
+
+    <div class="card">
+        <h2>Connection Settings</h2>
+        <div class="form-group">
+            <label for="accountName">Storage Account Name</label>
+            <input type="text" id="accountName" placeholder="e.g., devstoreaccount1">
+        </div>
+        <div class="form-group">
+            <label for="accountKey">Storage Account Key</label>
+            <input type="password" id="accountKey" placeholder="Base64 encoded key">
+        </div>
+        <div class="form-group">
+            <label for="containerName">Container Name</label>
+            <input type="text" id="containerName" placeholder="e.g., test-container">
+        </div>
+        <div class="form-group">
+            <label for="blobEndpoint">Blob Endpoint (optional)</label>
+            <input type="text" id="blobEndpoint" placeholder="e.g., http://127.0.0.1:10000/devstoreaccount1">
+            <div class="hint">Leave empty for Azure public cloud. Set for Azurite or sovereign clouds.</div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-secondary" onclick="fillAzuriteDefaults()">Fill Azurite Defaults</button>
+            <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Test Connection</h2>
+        <button class="btn btn-primary" onclick="testConnection()">Test Connection</button>
+        <div id="testResult" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+        <h2>Blob Operations</h2>
+
+        <div class="form-group">
+            <label for="blobName">Blob Name</label>
+            <input type="text" id="blobName" placeholder="e.g., my-file.txt">
+        </div>
+
+        <hr>
+
+        <h3>Upload Blob</h3>
+        <div class="form-group">
+            <label for="blobContent">Content</label>
+            <textarea id="blobContent" placeholder="Enter blob content here..."></textarea>
+        </div>
+        <button class="btn btn-success" onclick="uploadBlob()">Upload Blob</button>
+        <div id="uploadResult" class="result" style="display:none;"></div>
+
+        <hr>
+
+        <h3>Other Operations</h3>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="downloadBlob()">Download Blob</button>
+            <button class="btn btn-primary" onclick="listBlobs()">List All Blobs</button>
+            <button class="btn btn-primary" onclick="checkExists()">Check If Exists</button>
+            <button class="btn btn-danger" onclick="deleteBlob()">Delete Blob</button>
+        </div>
+        <div id="operationResult" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        function fillAzuriteDefaults() {
+            document.getElementById('accountName').value = 'devstoreaccount1';
+            document.getElementById('accountKey').value = 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
+            document.getElementById('containerName').value = 'test-container';
+            document.getElementById('blobEndpoint').value = 'http://127.0.0.1:10000/devstoreaccount1';
+        }
+
+        function clearForm() {
+            document.getElementById('accountName').value = '';
+            document.getElementById('accountKey').value = '';
+            document.getElementById('containerName').value = '';
+            document.getElementById('blobEndpoint').value = '';
+            document.getElementById('blobName').value = '';
+            document.getElementById('blobContent').value = '';
+        }
+
+        function getHeaders() {
+            const headers = {
+                'X-Azure-Account-Name': document.getElementById('accountName').value,
+                'X-Azure-Account-Key': document.getElementById('accountKey').value,
+                'X-Azure-Container-Name': document.getElementById('containerName').value
+            };
+            const blobEndpoint = document.getElementById('blobEndpoint').value;
+            if (blobEndpoint) {
+                headers['X-Azure-Blob-Endpoint'] = blobEndpoint;
+            }
+            return headers;
+        }
+
+        function showResult(elementId, data, isError) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'block';
+            el.className = 'result ' + (isError ? 'error' : 'success');
+            el.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showLoading(elementId) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'block';
+            el.className = 'result loading';
+            el.textContent = 'Loading...';
+        }
+
+        async function testConnection() {
+            showLoading('testResult');
+            try {
+                const response = await fetch('/api/dynamic/test', {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                showResult('testResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('testResult', { error: error.message }, true);
+            }
+        }
+
+        async function uploadBlob() {
+            const blobName = document.getElementById('blobName').value;
+            const content = document.getElementById('blobContent').value;
+
+            if (!blobName) {
+                showResult('uploadResult', { error: 'Please enter a blob name' }, true);
+                return;
+            }
+
+            showLoading('uploadResult');
+            try {
+                const headers = getHeaders();
+                headers['Content-Type'] = 'text/plain';
+
+                const response = await fetch('/api/dynamic/blobs/' + encodeURIComponent(blobName), {
+                    method: 'POST',
+                    headers: headers,
+                    body: content
+                });
+                const data = await response.json();
+                showResult('uploadResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('uploadResult', { error: error.message }, true);
+            }
+        }
+
+        async function downloadBlob() {
+            const blobName = document.getElementById('blobName').value;
+
+            if (!blobName) {
+                showResult('operationResult', { error: 'Please enter a blob name' }, true);
+                return;
+            }
+
+            showLoading('operationResult');
+            try {
+                const response = await fetch('/api/dynamic/blobs/' + encodeURIComponent(blobName), {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                showResult('operationResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('operationResult', { error: error.message }, true);
+            }
+        }
+
+        async function listBlobs() {
+            showLoading('operationResult');
+            try {
+                const response = await fetch('/api/dynamic/blobs', {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                showResult('operationResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('operationResult', { error: error.message }, true);
+            }
+        }
+
+        async function checkExists() {
+            const blobName = document.getElementById('blobName').value;
+
+            if (!blobName) {
+                showResult('operationResult', { error: 'Please enter a blob name' }, true);
+                return;
+            }
+
+            showLoading('operationResult');
+            try {
+                const response = await fetch('/api/dynamic/blobs/' + encodeURIComponent(blobName) + '/exists', {
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                showResult('operationResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('operationResult', { error: error.message }, true);
+            }
+        }
+
+        async function deleteBlob() {
+            const blobName = document.getElementById('blobName').value;
+
+            if (!blobName) {
+                showResult('operationResult', { error: 'Please enter a blob name' }, true);
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete blob: ' + blobName + '?')) {
+                return;
+            }
+
+            showLoading('operationResult');
+            try {
+                const response = await fetch('/api/dynamic/blobs/' + encodeURIComponent(blobName), {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                const data = await response.json();
+                showResult('operationResult', data, data.status === 'error');
+            } catch (error) {
+                showResult('operationResult', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>
