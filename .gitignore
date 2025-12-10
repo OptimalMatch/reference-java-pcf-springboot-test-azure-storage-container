@@ -1,0 +1,24 @@
+# Build output
+target/
+
+# Azurite data
+azurite-data/
+
+# Azurite node_modules and build
+Azurite-3.35.0/node_modules/
+Azurite-3.35.0/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
