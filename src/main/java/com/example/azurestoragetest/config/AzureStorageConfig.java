@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,7 +27,7 @@ public class AzureStorageConfig {
     private String accountKey;
     private String containerName;
     private String blobEndpoint;
-    private boolean useAzurite;
+    private boolean configured = false;
 
     @PostConstruct
     public void init() {
@@ -38,7 +39,7 @@ public class AzureStorageConfig {
 
         // Check if we should use Azurite (local emulator)
         String useAzuriteEnv = System.getenv("USE_AZURITE");
-        useAzurite = "true".equalsIgnoreCase(useAzuriteEnv);
+        boolean useAzurite = "true".equalsIgnoreCase(useAzuriteEnv);
 
         if (useAzurite) {
             logger.info("Using Azurite local emulator");
@@ -50,6 +51,7 @@ public class AzureStorageConfig {
             containerName = System.getenv("AZURE_STORAGE_CONTAINER_NAME") != null
                     ? System.getenv("AZURE_STORAGE_CONTAINER_NAME")
                     : "test-container";
+            configured = true;
             return;
         }
 
@@ -77,6 +79,7 @@ public class AzureStorageConfig {
                                 containerName = getCredentialValue(credentials, "container-name", "containerName", "container_name");
                                 blobEndpoint = getCredentialValue(credentials, "blob-endpoint", "blobEndpoint", "blob_endpoint");
                                 logger.info("Azure Storage credentials loaded from VCAP_SERVICES (service: {})", serviceName);
+                                configured = true;
                                 return;
                             }
                         }
@@ -91,12 +94,20 @@ public class AzureStorageConfig {
 
             } catch (Exception e) {
                 logger.error("Error parsing VCAP_SERVICES: {}", e.getMessage());
-                throw new RuntimeException("Failed to parse VCAP_SERVICES", e);
+                logger.warn("Application will start but static endpoints (/api/blobs/*) will not work. Use dynamic endpoints (/api/dynamic/*) instead.");
+                return;
             }
         }
 
         if (accountName == null || accountKey == null || containerName == null) {
-            throw new RuntimeException("Azure Storage credentials not found. Please configure VCAP_SERVICES or environment variables.");
+            logger.warn("Azure Storage credentials not configured. Static endpoints (/api/blobs/*) will not work.");
+            logger.info("Use dynamic endpoints (/api/dynamic/*) with credentials passed via HTTP headers, or configure:");
+            logger.info("  - Environment variables: AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, AZURE_STORAGE_CONTAINER_NAME");
+            logger.info("  - Or set USE_AZURITE=true for local testing with Azurite emulator");
+            logger.info("  - Or bind a user-provided service in PCF");
+            configured = false;
+        } else {
+            configured = true;
         }
     }
 
@@ -110,13 +121,26 @@ public class AzureStorageConfig {
         return null;
     }
 
+    public boolean isConfigured() {
+        return configured;
+    }
+
     @Bean
     public StorageSharedKeyCredential storageSharedKeyCredential() {
+        if (!configured) {
+            return null;
+        }
         return new StorageSharedKeyCredential(accountName, accountKey);
     }
 
     @Bean
-    public BlobServiceClient blobServiceClient(StorageSharedKeyCredential credential) {
+    public BlobServiceClient blobServiceClient() {
+        if (!configured) {
+            return null;
+        }
+
+        StorageSharedKeyCredential credential = new StorageSharedKeyCredential(accountName, accountKey);
+
         String endpoint;
         if (blobEndpoint != null && !blobEndpoint.isEmpty()) {
             endpoint = blobEndpoint;

@@ -7,6 +7,7 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -22,13 +23,22 @@ public class BlobStorageService {
     private final BlobServiceClient blobServiceClient;
     private final String containerName;
 
-    public BlobStorageService(BlobServiceClient blobServiceClient,
-                              @Qualifier("containerName") String containerName) {
+    @Autowired
+    public BlobStorageService(@Autowired(required = false) BlobServiceClient blobServiceClient,
+                              @Autowired(required = false) @Qualifier("containerName") String containerName) {
         this.blobServiceClient = blobServiceClient;
         this.containerName = containerName;
     }
 
+    private void checkConfigured() {
+        if (blobServiceClient == null) {
+            throw new IllegalStateException("Azure Storage is not configured. " +
+                    "Use dynamic endpoints (/api/dynamic/*) with credentials passed via HTTP headers, or configure environment variables.");
+        }
+    }
+
     private BlobContainerClient getContainerClient() {
+        checkConfigured();
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
         if (!containerClient.exists()) {
             logger.info("Container '{}' does not exist. Creating it.", containerName);
