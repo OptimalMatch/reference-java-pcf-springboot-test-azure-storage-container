@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: azure-storage-test
+
+server:
+  port: 8080
+
+# Azure Storage Configuration is loaded from VCAP_SERVICES
+# Create a user-provided service with credentials:
+#   cf cups azure-storage -p '{"account-name":"xxx","account-key":"xxx","container-name":"xxx"}'
+
+# Actuator endpoints for PCF health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example.azurestoragetest: INFO
+    com.azure: WARN
