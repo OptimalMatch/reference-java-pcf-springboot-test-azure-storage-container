@@ -8,6 +8,7 @@ A Spring Boot service for testing Azure Blob Storage connectivity. Designed for 
 - Account key authentication
 - VCAP_SERVICES integration for PCF
 - Local testing with Azurite emulator
+- Dynamic endpoint with credentials passed via HTTP headers
 
 ## Prerequisites
 
@@ -16,6 +17,8 @@ A Spring Boot service for testing Azure Blob Storage connectivity. Designed for 
 - Node.js (for Azurite local emulator)
 
 ## REST API Endpoints
+
+### Static Endpoints (use configured credentials)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -26,6 +29,76 @@ A Spring Boot service for testing Azure Blob Storage connectivity. Designed for 
 | DELETE | `/api/blobs/{blobName}` | Delete a blob |
 | GET | `/api/blobs/{blobName}/exists` | Check if blob exists |
 | GET | `/actuator/health` | Health check endpoint |
+
+### Dynamic Endpoints (pass credentials via headers)
+
+These endpoints allow you to pass Azure Storage credentials via HTTP headers, useful for testing different storage accounts without restarting the app.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dynamic/test` | Test connection |
+| GET | `/api/dynamic/blobs` | List all blobs |
+| POST | `/api/dynamic/blobs/{blobName}` | Upload blob |
+| GET | `/api/dynamic/blobs/{blobName}` | Download blob |
+| DELETE | `/api/dynamic/blobs/{blobName}` | Delete blob |
+| GET | `/api/dynamic/blobs/{blobName}/exists` | Check if blob exists |
+
+#### Required Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Azure-Account-Name` | Storage account name |
+| `X-Azure-Account-Key` | Storage account key |
+| `X-Azure-Container-Name` | Container name |
+
+#### Optional Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Azure-Blob-Endpoint` | Custom blob endpoint (for Azurite or sovereign clouds) |
+
+#### Example: Dynamic endpoint with Azurite
+
+```bash
+# Test connection
+curl http://localhost:8080/api/dynamic/test \
+  -H "X-Azure-Account-Name: devstoreaccount1" \
+  -H "X-Azure-Account-Key: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" \
+  -H "X-Azure-Container-Name: my-container" \
+  -H "X-Azure-Blob-Endpoint: http://127.0.0.1:10000/devstoreaccount1"
+
+# Upload a blob
+curl -X POST http://localhost:8080/api/dynamic/blobs/test-file.txt \
+  -H "X-Azure-Account-Name: devstoreaccount1" \
+  -H "X-Azure-Account-Key: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" \
+  -H "X-Azure-Container-Name: my-container" \
+  -H "X-Azure-Blob-Endpoint: http://127.0.0.1:10000/devstoreaccount1" \
+  -H "Content-Type: text/plain" \
+  -d "Hello from dynamic endpoint!"
+
+# Download the blob
+curl http://localhost:8080/api/dynamic/blobs/test-file.txt \
+  -H "X-Azure-Account-Name: devstoreaccount1" \
+  -H "X-Azure-Account-Key: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" \
+  -H "X-Azure-Container-Name: my-container" \
+  -H "X-Azure-Blob-Endpoint: http://127.0.0.1:10000/devstoreaccount1"
+
+# List blobs
+curl http://localhost:8080/api/dynamic/blobs \
+  -H "X-Azure-Account-Name: devstoreaccount1" \
+  -H "X-Azure-Account-Key: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" \
+  -H "X-Azure-Container-Name: my-container" \
+  -H "X-Azure-Blob-Endpoint: http://127.0.0.1:10000/devstoreaccount1"
+```
+
+#### Example: Dynamic endpoint with real Azure Storage
+
+```bash
+curl http://localhost:8080/api/dynamic/test \
+  -H "X-Azure-Account-Name: yourstorageaccount" \
+  -H "X-Azure-Account-Key: your-base64-encoded-key" \
+  -H "X-Azure-Container-Name: your-container"
+```
 
 ## Local Development with Azurite
 
@@ -174,9 +247,11 @@ applications:
 │   ├── config/
 │   │   └── AzureStorageConfig.java
 │   ├── controller/
-│   │   └── BlobStorageController.java
+│   │   ├── BlobStorageController.java
+│   │   └── DynamicBlobStorageController.java
 │   └── service/
-│       └── BlobStorageService.java
+│       ├── BlobStorageService.java
+│       └── DynamicBlobStorageService.java
 ├── src/main/resources/
 │   └── application.yml
 ├── manifest.yml                 # PCF deployment manifest
